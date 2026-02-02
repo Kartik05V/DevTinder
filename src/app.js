@@ -4,10 +4,13 @@ const User = require("./models/user");
 //const { default: mongoose } = require("mongoose");
 const { validateSignUpData } = require("./utils/validate.js");
 const bcrypt = require("bcrypt");
-
+const {userAuth} = require("./middlewares/auth.js");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 
 
 const app = express();
+
 //BEFORE DATABASE CREATION
 // app.use("/",(req,res,next)=>{
 //     //res.send("hello");
@@ -27,7 +30,9 @@ const app = express();
 // });
 
 //AFTER DATABASE CREATION
+
 app.use(express.json());
+app.use(cookieParser());
 
 app.post("/signup", async (req,res)=>{
     try{
@@ -38,7 +43,7 @@ app.post("/signup", async (req,res)=>{
         const passwordHash = await bcrypt.hash(password, 10);
         console.log(passwordHash);
 
-         //   Creating a new instance of the User model
+        //   Creating a new instance of the User model
         const user = new User({
             firstName,
             lastName,
@@ -59,114 +64,139 @@ app.post("/login", async (req, res) => {
 
     const user = await User.findOne({ emailId: emailId });
     if (!user) {
-      throw new Error("Invalid credentials email");
+      throw new Error("Invalid credentials ");
     }
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    //const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await user.validatePassword(password);
 
     if (isPasswordValid) {
-      res.send("Login Successful!!!");
+        // Create a JWT Token
+        //const token = await jwt.sign({ _id: user._id }, "DEV@Tinder$05");
+        const token = await user.getJWT();
+
+        // Add the token to cookie and send the response back to the user
+        res.cookie("token", token, {
+            expires: new Date(Date.now() + 8 * 3600000),//expire after 8 hrs
+        });
+        res.send("Login Successful!!!");
     } else {
-      throw new Error("Invalid credentials password");
+      throw new Error("Invalid credentials ");
     }
   } catch (err) {
     res.status(400).send("ERROR : " + err.message);
-  }
+  };
 });
 
-app.get("/user", async (req,res)=>{
-    const userEmail = req.query.emailId;
-    //console.log(req.body);
-    try{
-        const user = await User.findOne({emailId : userEmail});
-        if(!user){
-            res.status(404).send("User Not Found");
-        }
-        else{
-            res.send(user);
-        }
-    }
-    catch (err){
-        res.status(400).send("Something went wrong");
+app.get("/profile",userAuth ,async (req,res)=>{
+    try {
+        const user = req.user;
+        res.send(user);
+    }catch (err) {
+        res.status(400).send("ERROR : " + err.message);
     };
 });
 
-app.get("/feed",async (req,res)=>{
-    try{
-        const users = await User.find({});
-        res.send(users);
-    }
-    catch (err){
-        res.status(400).send("Something went wrong");
-    }; 
+app.post("/sendConnectionRequest", userAuth, async (req, res) => {
+  const user = req.user;
+  // Sending a connection request
+  console.log("Sending a connection request");
+  res.send(user.firstName + " sent the connect request!");
 });
 
-app.delete("/user",async (req,res)=>{
-    const userId = req.body.userId;
-    //console.log(userId);
-    try{
-        const user = await User.findByIdAndDelete(userId);
-        res.send("User deleted successfully")
-    }catch(err){
-        res.status(400).send("Something went wrong");
-    };
-});
+// app.get("/user", async (req,res)=>{
+//     const userEmail = req.query.emailId;
+//     //console.log(req.body);
+//     try{
+//         const user = await User.findOne({emailId : userEmail});
+//         if(!user){
+//             res.status(404).send("User Not Found");
+//         }
+//         else{
+//             res.send(user);
+//         }
+//     }
+//     catch (err){
+//         res.status(400).send("Something went wrong");
+//     };
+// });
 
-app.patch("/user/:userId", async (req,res)=>{
-    const data = req.body;
-    const userId = req.params.userId;
-    // any other data field that is sent in the body of the request 
-    // that is not in the schema will be ignored by the api. 
+// app.get("/feed",async (req,res)=>{
+//     try{
+//         const users = await User.find({});
+//         res.send(users);
+//     }
+//     catch (err){
+//         res.status(400).send("Something went wrong");
+//     }; 
+// });
 
-    try{
-        const ALLOWED_UPDATES = ["photoUrl", "about", "gender", "age", "skills"];
-        const isUpdateAllowed = Object.keys(data).every((k) =>ALLOWED_UPDATES.includes(k));
-        if (!isUpdateAllowed) {
-            throw new Error("Update not allowed");
-        }
-        if (data?.skills?.length > 10) {
-            throw new Error("Skills cannot be more than 10");
-        }
-        if (data?.skills && data?.skills?.length > 0) {
-            const uniqueSkills = [...new Set(data?.skills)];
-            if (uniqueSkills.length !== data?.skills.length) {
-                throw new Error("Duplicate skills are not allowed");
-            };
-        }
-        const user = await User.findByIdAndUpdate({_id : userId}, data,
-             {returnDocument:"after", runValidators : true});
-        res.send("User updated successfully");
-    }
-    catch (err){
-        res.status(400).send("Update Failed "+ err.message);
-    };
-});
+// app.delete("/user",async (req,res)=>{
+//     const userId = req.body.userId;
+//     //console.log(userId);
+//     try{
+//         const user = await User.findByIdAndDelete(userId);
+//         res.send("User deleted successfully")
+//     }catch(err){
+//         res.status(400).send("Something went wrong");
+//     };
+// });
 
-app.patch("/userbyemail/:useremail", async (req,res)=>{
-    const data = req.body;
-    const useremail = req.params.useremail;
-    try{
-        const ALLOWED_UPDATES = ["photoUrl", "about", "gender", "age", "skills"];
-        const isUpdateAllowed = Object.keys(data).every((k) =>ALLOWED_UPDATES.includes(k));
-        if (!isUpdateAllowed) {
-            throw new Error("Update not allowed");
-        }
-        if (data?.skills?.length > 10) {
-            throw new Error("Skills cannot be more than 10");
-        }
-        if (data?.skills && data?.skills?.length > 0) {
-            const uniqueSkills = [...new Set(data?.skills)];
-            if (uniqueSkills.length !== data?.skills.length) {
-                throw new Error("Duplicate skills are not allowed");
-            };
-        }
-        const user = await User.findOneAndUpdate({emailId : useremail}, data, {returnDocument:"after" ,
-             runValidators : true });
-        res.send("User updated successfully by emailId");
-    }
-    catch (err){
-        res.status(400).send("Update Failed "+ err.message);
-    };
-});
+// app.patch("/user/:userId", async (req,res)=>{
+//     const data = req.body;
+//     const userId = req.params.userId;
+//     // any other data field that is sent in the body of the request 
+//     // that is not in the schema will be ignored by the api. 
+
+//     try{
+//         const ALLOWED_UPDATES = ["photoUrl", "about", "gender", "age", "skills"];
+//         const isUpdateAllowed = Object.keys(data).every((k) =>ALLOWED_UPDATES.includes(k));
+//         if (!isUpdateAllowed) {
+//             throw new Error("Update not allowed");
+//         }
+//         if (data?.skills?.length > 10) {
+//             throw new Error("Skills cannot be more than 10");
+//         }
+//         if (data?.skills && data?.skills?.length > 0) {
+//             const uniqueSkills = [...new Set(data?.skills)];
+//             if (uniqueSkills.length !== data?.skills.length) {
+//                 throw new Error("Duplicate skills are not allowed");
+//             };
+//         }
+//         const user = await User.findByIdAndUpdate({_id : userId}, data,
+//              {returnDocument:"after", runValidators : true});
+//         res.send("User updated successfully");
+//     }
+//     catch (err){
+//         res.status(400).send("Update Failed "+ err.message);
+//     };
+// });
+
+// app.patch("/userbyemail/:useremail", async (req,res)=>{
+//     const data = req.body;
+//     const useremail = req.params.useremail;
+//     try{
+//         const ALLOWED_UPDATES = ["photoUrl", "about", "gender", "age", "skills"];
+//         const isUpdateAllowed = Object.keys(data).every((k) =>ALLOWED_UPDATES.includes(k));
+//         if (!isUpdateAllowed) {
+//             throw new Error("Update not allowed");
+//         }
+//         if (data?.skills?.length > 10) {
+//             throw new Error("Skills cannot be more than 10");
+//         }
+//         if (data?.skills && data?.skills?.length > 0) {
+//             const uniqueSkills = [...new Set(data?.skills)];
+//             if (uniqueSkills.length !== data?.skills.length) {
+//                 throw new Error("Duplicate skills are not allowed");
+//             };
+//         }
+//         const user = await User.findOneAndUpdate({emailId : useremail}, data, {returnDocument:"after" ,
+//              runValidators : true });
+//         res.send("User updated successfully by emailId");
+//     }
+//     catch (err){
+//         res.status(400).send("Update Failed "+ err.message);
+//     };
+// });
 
 connectDB().then(() => {
   console.log("Database connection established successfully");
