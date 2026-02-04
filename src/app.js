@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const authRouter = require("./routes/auth");
 const profileRouter = require("./routes/profile");
 const requestRouter = require("./routes/request");
+const userRouter = require("./routes/user");
 //const { default: mongoose } = require("mongoose");
 //const jwt = require("jsonwebtoken");
 
@@ -35,6 +36,7 @@ app.use(cookieParser());
 app.use("/", authRouter);
 app.use("/", profileRouter);
 app.use("/", requestRouter);
+app.use("/", userRouter);
 
 // app.get("/user", async (req,res)=>{
 //     const userEmail = req.query.emailId;
@@ -60,7 +62,7 @@ app.use("/", requestRouter);
 //     }
 //     catch (err){
 //         res.status(400).send("Something went wrong");
-//     }; 
+//     };
 // });
 
 // app.delete("/user",async (req,res)=>{
@@ -77,8 +79,8 @@ app.use("/", requestRouter);
 // app.patch("/user/:userId", async (req,res)=>{
 //     const data = req.body;
 //     const userId = req.params.userId;
-//     // any other data field that is sent in the body of the request 
-//     // that is not in the schema will be ignored by the api. 
+//     // any other data field that is sent in the body of the request
+//     // that is not in the schema will be ignored by the api.
 
 //     try{
 //         const ALLOWED_UPDATES = ["photoUrl", "about", "gender", "age", "skills"];
@@ -131,11 +133,13 @@ app.use("/", requestRouter);
 //     };
 // });
 
-connectDB().then(() => {
-  console.log("Database connection established successfully");
-  app.listen(7777, () => {
-    console.log("server on 7777");
-  });
-}).catch((err)=>{
+connectDB()
+  .then(() => {
+    console.log("Database connection established successfully");
+    app.listen(7777, () => {
+      console.log("server on 7777");
+    });
+  })
+  .catch((err) => {
     console.error("Database cannot be connected");
-});
+  });
