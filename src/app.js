@@ -5,6 +5,7 @@ const authRouter = require("./routes/auth");
 const profileRouter = require("./routes/profile");
 const requestRouter = require("./routes/request");
 const userRouter = require("./routes/user");
+const cors = require("cors");
 //const { default: mongoose } = require("mongoose");
 //const jwt = require("jsonwebtoken");
 
@@ -30,6 +31,12 @@ const app = express();
 
 //AFTER DATABASE CREATION
 
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(cookieParser());
 
