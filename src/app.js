@@ -6,6 +6,7 @@ const profileRouter = require("./routes/profile");
 const requestRouter = require("./routes/request");
 const userRouter = require("./routes/user");
 const cors = require("cors");
+require("dotenv").config();
 //const { default: mongoose } = require("mongoose");
 //const jwt = require("jsonwebtoken");
 
@@ -143,7 +144,7 @@ app.use("/", userRouter);
 connectDB()
   .then(() => {
     console.log("Database connection established successfully");
-    app.listen(7777, () => {
+    app.listen(process.env.PORT, () => {
       console.log("server on 7777");
     });
   })
